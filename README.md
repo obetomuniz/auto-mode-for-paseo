@@ -145,8 +145,17 @@ Each request has a 20-second limit.
 The OpenAI key and the TypeSafe key are separate values. The plugin never uses one for the other service.
 A Decisions API failure stops the turn. It never sends the request to Jev or Laya as a fallback.
 
-Decisions API quality for this routing task has not been measured.
-Evaluate representative requests before using it for unattended work.
+Decisions API quality for this routing task has not been benchmarked.
+In one local smoke test with the default presets, the Decisions API and Jev each
+selected the expected preset in 15 of 15 requests. Laya selected it in 14 of 15.
+The Decisions API returned the expected intent in 15 of 18 requests, Jev in 18 of 18,
+and Laya in 10 of 18. Each Decisions API intent error returned discussion
+where implementation or review was expected. Such an error adds no-edit instructions
+to a turn that requested a change. The Decisions API and Jev tagged 12 of 12 sample scopes
+correctly. Laya tagged 11 of 12. The median classification time was about 300 ms
+for the Decisions API and for Jev.
+This test used a different request set from the Laya test above. It ran once.
+Evaluate representative requests before using the Decisions API for unattended work.
 
 ### Presets
 

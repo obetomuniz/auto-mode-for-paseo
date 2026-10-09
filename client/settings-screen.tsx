@@ -170,7 +170,7 @@ export function SettingsScreen({ theme }: PluginSurfaceProps) {
         {saveState.saving ? <ActivityIndicator size="small" color={theme.colors.foregroundMuted} /> : null}
         {saveState.error ? <SettingsButton theme={theme} label="Retry" onPress={() => { void writer?.flush(); }} /> : null}
       </View>
-      <SettingsSection title="Classifier" info="Choose how each new message is classified. Jev is more accurate for Auto preset selection. Laya runs locally with lower accuracy. The OpenAI Decisions API is a beta with unmeasured accuracy. A failure stops the turn. The plugin never switches classifiers automatically.">
+      <SettingsSection title="Classifier" info="Choose how each new message is classified. Jev is more accurate for Auto preset selection. Laya runs locally with lower accuracy. The OpenAI Decisions API is a beta with limited testing. A failure stops the turn. The plugin never switches classifiers automatically.">
         <SettingsCard>
           <SettingsSelect label="Classifier" value={draft.classifier} error={fieldError("classifier")}
             options={[{ label: "Jev (TypeSafe API)", value: "jev" }, { label: "Laya (local, experimental)", value: "laya" }, { label: "OpenAI Decisions API (beta, experimental)", value: "openai" }]}
@@ -200,7 +200,7 @@ export function SettingsScreen({ theme }: PluginSurfaceProps) {
         // Remount the fields. The Jev model input must not keep its text here.
         key="openai"
         title="OpenAI"
-        info="Each new message and up to six recent user messages, answers, or plans (1,000 characters each) are sent to the OpenAI Decisions API. This API is a public beta. Its quality for this routing task is not measured. The key is stored in ~/.paseo/auto-mode-for-paseo.local.json."
+        info="Each new message and up to six recent user messages, answers, or plans (1,000 characters each) are sent to the OpenAI Decisions API. This API is a public beta. Its quality for this routing task is not benchmarked. The key is stored in ~/.paseo/auto-mode-for-paseo.local.json."
       >
         <SettingsCard>
           {keyRow(Boolean(loaded.data?.hasOpenaiApiKey), "OPENAI_API_KEY", "sk-...")}
