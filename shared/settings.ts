@@ -52,20 +52,23 @@ const presetsSchema = z.array(presetSchema).max(MAX_PRESETS, `Use at most ${MAX_
 
 export const settingsSchema = z.object({
   presetScopeVersion: z.literal(1).default(1),
-  classifier: z.enum(["jev", "laya"]).default("jev"),
+  classifier: z.enum(["jev", "laya", "openai"]).default("jev"),
   layaPython: z.string().trim().min(1, "Enter the Python executable.").default("python"),
   layaCache: z.string().trim().default(""),
   layaModel: z.enum(["multilingual", "english", "typed-decisions"]).default("multilingual"),
   layaDevice: z.enum(["cpu", "cuda", "auto"]).default("cpu"),
   apiKey: z.string().default(""),
   model: z.string().default("jev-latest"),
+  openaiApiKey: z.string().default(""),
+  openaiModel: z.string().default("gpt-6-luna"),
   presets: presetsSchema.default(defaultPresets),
 });
 
 export type ProviderSettings = z.output<typeof settingsSchema>;
 
-export const publicSettingsSchema = settingsSchema.omit({ apiKey: true }).extend({
+export const publicSettingsSchema = settingsSchema.omit({ apiKey: true, openaiApiKey: true }).extend({
   hasApiKey: z.boolean(),
+  hasOpenaiApiKey: z.boolean(),
 });
 
 export type PublicSettings = z.output<typeof publicSettingsSchema>;
@@ -73,10 +76,11 @@ export type PublicSettings = z.output<typeof publicSettingsSchema>;
 export const defaults: ProviderSettings = settingsSchema.parse({});
 
 export function toPublic(settings: ProviderSettings): PublicSettings {
-  const { apiKey: _apiKey, ...rest } = settings;
+  const { apiKey: _apiKey, openaiApiKey: _openaiApiKey, ...rest } = settings;
   return publicSettingsSchema.parse({
     ...rest,
     hasApiKey: settings.apiKey.trim().length > 0,
+    hasOpenaiApiKey: settings.openaiApiKey.trim().length > 0,
   });
 }
 

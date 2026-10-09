@@ -2,6 +2,7 @@ import { presetSchema, type ProviderSettings } from "../shared/settings";
 import { TASK_TYPES, TASK_TYPE_CRITERIA, type TaskType } from "../shared/task-types";
 import { askTypeSafe, typeSafeKey } from "./jev";
 import { askLaya } from "./laya";
+import { askDecisions, openAiKey, OPENAI_DEFAULT_MODEL } from "./openai-decisions";
 import { readChoice } from "./classifier";
 
 export const SCOPE_TYPE_QUESTIONS = {
@@ -32,6 +33,8 @@ export async function detectTaskTypes(description: string, settings: ProviderSet
   const body = settings.classifier === "laya"
     ? await askLaya({ python: settings.layaPython, cache: settings.layaCache, model: settings.layaModel, device: settings.layaDevice,
       state, questions: SCOPE_TYPE_QUESTIONS.laya })
+    : settings.classifier === "openai"
+    ? await askDecisions({ apiKey: openAiKey(settings), model: settings.openaiModel.trim() || OPENAI_DEFAULT_MODEL, state, questions: SCOPE_TYPE_QUESTIONS.jev })
     : await askTypeSafe({ apiKey: typeSafeKey(settings), model: settings.model.trim() || "jev-latest", state, questions: SCOPE_TYPE_QUESTIONS.jev });
   if (typeof body !== "object" || body === null || !("answers" in body) || typeof body.answers !== "object" || body.answers === null) {
     throw new Error("Classifier response was missing answers.");

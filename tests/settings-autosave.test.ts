@@ -67,6 +67,12 @@ test("slow writes serialize the latest edit and an explicit key without leaking 
   writer.update({ ...initial, model: "after-key" });
   await writer.flush();
   assert.equal(writes[2].apiKey, "");
+  await writer.saveKey("openai-key-explicit", "openaiApiKey");
+  assert.equal(writes[3].openaiApiKey, "openai-key-explicit");
+  assert.equal(writes[3].apiKey, "");
+  writer.update({ ...initial, model: "after-openai-key" });
+  await writer.flush();
+  assert.equal(writes[4].openaiApiKey, "");
 });
 
 test("failed saves retain edits for retry and never retry a failed key automatically", async () => {

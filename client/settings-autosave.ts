@@ -3,7 +3,7 @@ import { settingsSchema, type ProviderSettings, type PublicSettings } from "../s
 // Keep an incomplete preset local until its provider and model form a valid pair.
 // Other fields and presets can still save. API keys never enter an automatic save.
 export function settingsForAutosave(draft: PublicSettings, previous: ProviderSettings): ProviderSettings {
-  const candidate = { ...draft, apiKey: "" };
+  const candidate = { ...draft, apiKey: "", openaiApiKey: "" };
   const result = settingsSchema.safeParse(candidate);
   if (result.success) return result.data;
   const invalidPresets = new Set<number>();
@@ -20,6 +20,8 @@ export function settingsForAutosave(draft: PublicSettings, previous: ProviderSet
   return settingsSchema.parse(candidate);
 }
 
+export type KeyField = "apiKey" | "openaiApiKey";
+
 export type SaveState = { saving: boolean; pending: boolean; error: boolean };
 
 /** Coalesce typing and serialize all writes, including explicitly submitted keys. */
@@ -28,7 +30,7 @@ export class SettingsAutosave {
   private saved: string;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private running: Promise<void> | undefined;
-  private key: { value: string; resolve(): void; reject(error: Error): void } | undefined;
+  private key: { field: KeyField; value: string; resolve(): void; reject(error: Error): void } | undefined;
   private listener: ((state: SaveState) => void) | undefined;
   private failed = false;
 
@@ -36,7 +38,7 @@ export class SettingsAutosave {
     private readonly write: (values: ProviderSettings) => Promise<PublicSettings>,
     private readonly onSaved: (values: PublicSettings) => void,
   ) {
-    this.desired = settingsSchema.parse({ ...initial, apiKey: "" });
+    this.desired = settingsSchema.parse({ ...initial, apiKey: "", openaiApiKey: "" });
     this.saved = JSON.stringify(this.desired);
   }
 
@@ -54,10 +56,10 @@ export class SettingsAutosave {
     this.notify();
   }
 
-  saveKey(value: string): Promise<void> {
+  saveKey(value: string, field: KeyField = "apiKey"): Promise<void> {
     if (!value.trim()) return Promise.reject(new Error("Enter an API key."));
     if (this.key) return Promise.reject(new Error("Wait for the current key to save."));
-    const result = new Promise<void>((resolve, reject) => { this.key = { value, resolve, reject }; });
+    const result = new Promise<void>((resolve, reject) => { this.key = { field, value, resolve, reject }; });
     void this.flush();
     return result;
   }
@@ -82,7 +84,7 @@ export class SettingsAutosave {
       const key = this.key;
       this.key = undefined;
       try {
-        const values = await this.write({ ...snapshot, apiKey: key?.value ?? "" });
+        const values = await this.write({ ...snapshot, apiKey: "", openaiApiKey: "", ...(key ? { [key.field]: key.value } : {}) });
         this.saved = JSON.stringify(snapshot);
         this.onSaved(values);
         key?.resolve();

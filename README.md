@@ -16,6 +16,7 @@ It reads each new message and sends it to the best preset for the task.
 Each preset has its own provider, model, reasoning setting, and instructions.
 A preset can use Codex, Claude, OpenCode, or another provider installed in Paseo.
 TypeSafe Jev or a local Laya model classifies the message.
+The OpenAI Decisions API is a third, experimental classifier.
 
 The conversation picker contains Auto and preset names. Model names stay in
 the plugin settings. Paseo owns workspaces and native provider authentication.
@@ -26,6 +27,7 @@ the plugin settings. Paseo owns workspaces and native provider authentication.
 - Node.js 24 and npm.
 - An installed and authenticated Paseo provider for each enabled preset.
 - For Jev: a TypeSafe API key.
+- For the OpenAI Decisions API: an OpenAI API key with access to that API.
 - For Laya: no separate Python installation is needed on Windows.
 
 ## Install
@@ -123,6 +125,28 @@ in 16 of 18 requests and Laya in 14 of 18. Jev tagged 12 of 12 sample scopes
 correctly and Laya 10 of 12.
 Routing tests validate selection rules. They are not an accuracy benchmark.
 See the [Laya limitations](https://github.com/NandhaKishorM/laya#honest-limits).
+
+### OpenAI Decisions API (experimental)
+
+The Decisions API is an OpenAI endpoint that answers fixed questions with typed answers.
+It is a public beta. OpenAI can change its request format.
+
+Select **OpenAI Decisions API (beta, experimental)**. Enter the OpenAI API key.
+Click **Save** beside the key to apply it.
+You can also set `OPENAI_API_KEY` in the Paseo daemon environment.
+A key in the settings file has priority over `OPENAI_API_KEY`.
+Keep **Model** as `gpt-6-luna` unless OpenAI publishes another Decisions model.
+
+The plugin sends the same questions and the same bounded data as it sends to Jev.
+Preset scope questions use the API's predicate type. Other questions use its choice type.
+The plugin does not send images to the Decisions API.
+Each request has a 20-second limit.
+
+The OpenAI key and the TypeSafe key are separate values. The plugin never uses one for the other service.
+A Decisions API failure stops the turn. It never sends the request to Jev or Laya as a fallback.
+
+Decisions API quality for this routing task has not been measured.
+Evaluate representative requests before using it for unattended work.
 
 ### Presets
 
@@ -278,6 +302,7 @@ or interrupt it before you send another message.
 ## Data and security
 
 The selected classifier receives the following data. Jev sends it to TypeSafe.
+The OpenAI Decisions API classifier sends it to OpenAI.
 Laya processes it in a local Python process:
 
 - The new text message.
@@ -291,6 +316,7 @@ The plugin stores a TypeSafe API key in
 `~/.paseo/auto-mode-for-paseo.local.json` as plain text. A key in this file has
 priority over `TYPESAFE_API_KEY`. The settings API does not return the key to
 the client. An empty key field keeps the saved key.
+The same rules apply to the OpenAI API key and `OPENAI_API_KEY`.
 
 Laya requests have a 16,000-character message limit and a 64 KiB JSON limit.
 At most eight classifications can wait or run at once. They run in order.
@@ -327,7 +353,7 @@ Run all checks:
 npm run check
 ```
 
-The tests use simulated TypeSafe, Laya, and Paseo provider services. They do not need
+The tests use simulated TypeSafe, OpenAI, Laya, and Paseo provider services. They do not need
 credentials, model downloads, or a running Paseo daemon.
 Python bridge tests use a fake Laya module and need Python 3.10 or later.
 Set `LAYA_TEST_PYTHON` if the executable is not named `python`.
@@ -350,6 +376,7 @@ paseo plugin reload auto-mode-for-paseo
 - [Paseo](https://github.com/getpaseo/paseo)
 - [Paseo provider options](https://paseo.sh/docs/sdk/provider-options)
 - [Laya](https://github.com/NandhaKishorM/laya)
+- [OpenAI Decisions API](https://developers.openai.com/api/docs/guides/decisions)
 
 ## License
 

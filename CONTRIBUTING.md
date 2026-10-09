@@ -19,7 +19,7 @@ npm ci
 npm run check
 ```
 
-The tests do not use real TypeSafe, Laya, or Codex services.
+The tests do not use real TypeSafe, OpenAI, Laya, or Codex services.
 
 ## Make a change
 

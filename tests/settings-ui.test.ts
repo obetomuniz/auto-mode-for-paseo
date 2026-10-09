@@ -14,7 +14,7 @@ import * as detection from "../client/task-type-detection";
 
 // Render the actual component with host UI primitives represented as elements.
 // This checks conditional fields without a running native Paseo client.
-function render(classifier: "jev" | "laya", initialPresets = settings.defaults.presets, providerCatalog?: unknown, loading = false,
+function render(classifier: settings.ProviderSettings["classifier"], initialPresets = settings.defaults.presets, providerCatalog?: unknown, loading = false,
   detect: (description: string) => Promise<taskTypes.TaskType[]> = async () => ["other"]) {
   const source = readFileSync("client/settings-screen.tsx", "utf8");
   const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS } }).outputText;
@@ -35,6 +35,7 @@ function render(classifier: "jev" | "laya", initialPresets = settings.defaults.p
   const submissions: settings.ProviderSettings[] = [];
   const detections: string[] = [];
   let savedKey = "";
+  let savedOpenaiKey = "";
   let writeGate: Promise<void> | undefined;
   let writeError = false;
   runInNewContext(code, { exports, require(name: string) {
@@ -66,7 +67,8 @@ function render(classifier: "jev" | "laya", initialPresets = settings.defaults.p
         await writeGate;
         if (writeError) throw new Error("offline");
         savedKey = values.apiKey || savedKey;
-        return settings.toPublic({ ...values, apiKey: savedKey });
+        savedOpenaiKey = values.openaiApiKey || savedOpenaiKey;
+        return settings.toPublic({ ...values, apiKey: savedKey, openaiApiKey: savedOpenaiKey });
       }
     } };
     if (name === "@getpaseo/plugin/client/react-native") return { Icon: "icon" };
@@ -197,6 +199,33 @@ test("settings ask for a TypeSafe key only with Jev selected", () => {
   assert.ok(laya.includes("Python executable"));
   assert.ok(laya.includes("Laya model"));
   assert.ok(laya.includes("Device"));
+});
+
+test("OpenAI settings store their own key and an unsaved key never moves to another classifier", async () => {
+  const ui = render("openai");
+  const labels = ui.labels();
+  assert.ok(labels.includes("API key"));
+  assert.ok(labels.includes("Model"));
+  assert.ok(!labels.includes("Python executable"));
+  const keyField = () => ui.elements().find((node) => node.type === "native-input" && node.props.accessibilityLabel === "API key");
+  const field = (label: string) => ui.elements().find((node) => node.props.label === label);
+  assert.equal(field("Model").props.initialValue, "gpt-6-luna");
+  assert.match(field("API key").props.hint, /OPENAI_API_KEY/);
+  keyField().props.onChangeText("openai-key-explicit");
+  ui.elements().find((node) => node.props.accessibilityLabel === "Save API key").props.onPress();
+  await ui.settled();
+  assert.equal(ui.submissions[0].openaiApiKey, "openai-key-explicit");
+  assert.equal(ui.submissions[0].apiKey, "");
+  assert.equal(ui.loadedQuery.data!.hasOpenaiApiKey, true);
+  assert.equal(ui.loadedQuery.data!.hasApiKey, false);
+  assert.equal("openaiApiKey" in ui.loadedQuery.data!, false);
+  keyField().props.onChangeText("openai-key-unsaved");
+  field("Classifier").props.onValueChange("jev");
+  await ui.settled();
+  assert.equal(keyField().props.value, "");
+  assert.match(field("API key").props.hint, /TYPESAFE_API_KEY/);
+  assert.equal(field("Model").props.initialValue, "jev-latest");
+  assert.ok(ui.submissions.every((values) => !JSON.stringify(values).includes("openai-key-unsaved")));
 });
 
 test("default and custom presets use generic fields and can be removed and restored", () => {

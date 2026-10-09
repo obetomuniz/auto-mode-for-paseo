@@ -50,6 +50,7 @@ export function SettingsScreen({ theme }: PluginSurfaceProps) {
   const [draft, setDraft] = useState<PublicSettings>({
     ...defaults,
     hasApiKey: false,
+    hasOpenaiApiKey: false,
     ...loaded.data,
   });
   const [hydrated, setHydrated] = useState(Boolean(loaded.data));
@@ -105,7 +106,7 @@ export function SettingsScreen({ theme }: PluginSurfaceProps) {
     setKeySaving(true);
     setKeyError(undefined);
     try {
-      await writer.saveKey(keyDraft.trim());
+      await writer.saveKey(keyDraft.trim(), draftRef.current.classifier === "openai" ? "openaiApiKey" : "apiKey");
       setKeyDraft("");
     } catch (error) {
       setKeyError(error instanceof Error ? error.message : "Could not save the API key. Try again.");
@@ -123,6 +124,24 @@ export function SettingsScreen({ theme }: PluginSurfaceProps) {
   const updatePreset = (id: string, values: Partial<Preset>) => updateDraft((current) => ({
     ...current, presets: current.presets.map((preset) => preset.id === id ? { ...preset, ...values } : preset),
   }));
+
+  const keyRow = (stored: boolean, variable: string, placeholder: string) => (
+    <SettingsRow label="API key" error={keyError}
+      hint={stored ? "A key is stored. Enter a replacement to change it." : `Or set ${variable} on the daemon.`}>
+      <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <TextInput accessibilityLabel="API key" value={keyDraft} onChangeText={(value) => { setKeyDraft(value); setKeyError(undefined); }}
+          placeholder={placeholder} placeholderTextColor={theme.colors.foregroundMuted} secureTextEntry autoCapitalize="none" autoCorrect={false}
+          editable={ready && !keySaving}
+          style={{ width: 180, maxWidth: "100%", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.surface2 }} />
+        {keyDraft.length > 0 ? <>
+          <SettingsButton theme={theme} label="Cancel" accessibilityLabel="Cancel API key change" disabled={keySaving}
+            onPress={() => { setKeyDraft(""); setKeyError(undefined); }} />
+          <SettingsButton theme={theme} label="Save" accessibilityLabel="Save API key" busy={keySaving} disabled={keySaving || !keyDraft.trim()}
+            onPress={() => { void commitKey(); }} />
+        </> : null}
+      </View>
+    </SettingsRow>
+  );
 
   if (!hydrated) return (
     <View style={{ minHeight: 240, alignItems: "center", justifyContent: "center", gap: 12 }} accessibilityState={{ busy: loaded.isPending }}>
@@ -151,11 +170,12 @@ export function SettingsScreen({ theme }: PluginSurfaceProps) {
         {saveState.saving ? <ActivityIndicator size="small" color={theme.colors.foregroundMuted} /> : null}
         {saveState.error ? <SettingsButton theme={theme} label="Retry" onPress={() => { void writer?.flush(); }} /> : null}
       </View>
-      <SettingsSection title="Classifier" info="Choose how each new message is classified. Jev is more accurate for Auto preset selection. Laya runs locally with lower accuracy. A failure stops the turn. The plugin never switches classifiers automatically.">
+      <SettingsSection title="Classifier" info="Choose how each new message is classified. Jev is more accurate for Auto preset selection. Laya runs locally with lower accuracy. The OpenAI Decisions API is a beta with unmeasured accuracy. A failure stops the turn. The plugin never switches classifiers automatically.">
         <SettingsCard>
           <SettingsSelect label="Classifier" value={draft.classifier} error={fieldError("classifier")}
-            options={[{ label: "Jev (TypeSafe API)", value: "jev" }, { label: "Laya (local, experimental)", value: "laya" }]}
-            onValueChange={(classifier) => updateDraft((current) => ({ ...current, classifier }))} disabled={!ready} />
+            options={[{ label: "Jev (TypeSafe API)", value: "jev" }, { label: "Laya (local, experimental)", value: "laya" }, { label: "OpenAI Decisions API (beta, experimental)", value: "openai" }]}
+            // An unsaved key belongs to the classifier it was typed for.
+            onValueChange={(classifier) => { setKeyDraft(""); setKeyError(undefined); updateDraft((current) => ({ ...current, classifier })); }} disabled={!ready} />
         </SettingsCard>
       </SettingsSection>
       {draft.classifier === "jev" ? (
@@ -164,27 +184,32 @@ export function SettingsScreen({ theme }: PluginSurfaceProps) {
         info="Each new message and up to six recent user messages, answers, or plans (1,000 characters each) are sent to TypeSafe. Select Auto or a preset in the composer. The key is stored in ~/.paseo/auto-mode-for-paseo.local.json."
       >
         <SettingsCard>
-          <SettingsRow label="API key" error={keyError}
-            hint={loaded.data?.hasApiKey ? "A key is stored. Enter a replacement to change it." : "Or set TYPESAFE_API_KEY on the daemon."}>
-            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <TextInput accessibilityLabel="API key" value={keyDraft} onChangeText={(value) => { setKeyDraft(value); setKeyError(undefined); }}
-                placeholder="ts-..." placeholderTextColor={theme.colors.foregroundMuted} secureTextEntry autoCapitalize="none" autoCorrect={false}
-                editable={ready && !keySaving}
-                style={{ width: 180, maxWidth: "100%", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.surface2 }} />
-              {keyDraft.length > 0 ? <>
-                <SettingsButton theme={theme} label="Cancel" accessibilityLabel="Cancel API key change" disabled={keySaving}
-                  onPress={() => { setKeyDraft(""); setKeyError(undefined); }} />
-                <SettingsButton theme={theme} label="Save" accessibilityLabel="Save API key" busy={keySaving} disabled={keySaving || !keyDraft.trim()}
-                  onPress={() => { void commitKey(); }} />
-              </> : null}
-            </View>
-          </SettingsRow>
+          {keyRow(Boolean(loaded.data?.hasApiKey), "TYPESAFE_API_KEY", "ts-...")}
           <SettingsInput
             label="Model"
             error={fieldError("model")}
             initialValue={draft.model}
             onChangeText={(model) => updateDraft((current) => ({ ...current, model }))}
             placeholder="jev-latest"
+            disabled={!ready}
+          />
+        </SettingsCard>
+      </SettingsSection>
+      ) : draft.classifier === "openai" ? (
+      <SettingsSection
+        // Remount the fields. The Jev model input must not keep its text here.
+        key="openai"
+        title="OpenAI"
+        info="Each new message and up to six recent user messages, answers, or plans (1,000 characters each) are sent to the OpenAI Decisions API. This API is a public beta. Its quality for this routing task is not measured. The key is stored in ~/.paseo/auto-mode-for-paseo.local.json."
+      >
+        <SettingsCard>
+          {keyRow(Boolean(loaded.data?.hasOpenaiApiKey), "OPENAI_API_KEY", "sk-...")}
+          <SettingsInput
+            label="Model"
+            error={fieldError("openaiModel")}
+            initialValue={draft.openaiModel}
+            onChangeText={(openaiModel) => updateDraft((current) => ({ ...current, openaiModel }))}
+            placeholder="gpt-6-luna"
             disabled={!ready}
           />
         </SettingsCard>

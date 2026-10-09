@@ -29,6 +29,7 @@ server/
   session-controls.ts     Validate composer controls
   classifier.ts           Define shared decisions and validate answers
   jev.ts                  Call TypeSafe
+  openai-decisions.ts     Call the OpenAI Decisions API with translated questions
   laya.ts                 Manage the bounded local Python process
   laya-worker.ts          Embed the Python bridge in the plugin bundle
   laya-questions.ts       Define compact Laya questions
@@ -91,6 +92,7 @@ Manual selection takes priority over this capacity filter.
 Laya runs two passes when counts exist: scope fit and intent without counts, then
 task depth with counts. The second pass replaces only the depth answer. Local tests
 showed that the counts lowered Laya scope accuracy. Jev receives one request.
+The OpenAI Decisions API also receives one request.
 
 Git counters cover tracked changes against HEAD and the number of untracked files.
 They do not cover a committed branch diff or read untracked file contents.
@@ -240,6 +242,19 @@ later version can also work.
 
 `npm run typecheck` checks all TypeScript source. `npm test` compiles and runs
 the Node.js tests. `npm run check` runs both commands.
+
+## OpenAI Decisions API classification
+
+The adapter uses the shared question definitions and the shared answer validators.
+It sends the bounded state as one JSON text input. It sends no images.
+A fit question becomes a predicate. A choice question keeps its options.
+Each option carries its criterion and examples as the description.
+The adapter converts each named answer to the shared answer shape before validation.
+A duplicate answer name, a missing answer, or an invalid probability stops the turn.
+Answers of other types are ignored. Thus, a missing expected answer stops the turn.
+Each request has a 20-second limit. No error triggers a request to another classifier.
+The OpenAI key is stored and hidden in the same way as the TypeSafe key.
+Each key goes only to its own service.
 
 ## Local classification
 
