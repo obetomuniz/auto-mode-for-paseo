@@ -19,6 +19,7 @@ the `main` branch. This policy will change when the project has stable releases.
 With Jev selected, the plugin sends message text and limited recent context to
 TypeSafe. Auto also sends each enabled preset's complete scope:
 at most 240 characters for each of 32 presets. Names and IDs are excluded.
+With the OpenAI Decisions API selected, the plugin sends the same data to OpenAI instead.
 Execution instructions, provider settings, and credentials are excluded.
 Scopes cannot authorize edits or select Full access.
 The settings screen also sends a scope alone when it detects task types. This
@@ -29,10 +30,11 @@ These counts include changed files, added and removed lines, binary files, and
 untracked files. No filenames, repository paths, file contents, or raw Git output
 are sent. Change size informs task depth. It cannot authorize writes.
 With Laya selected, it processes that data locally. It stores
-the TypeSafe key as plain text in the local Paseo settings directory. Vendor
+the TypeSafe key and the OpenAI key as plain text in the local Paseo settings directory.
+The settings API returns neither key. Each key goes only to its own service. Vendor
 authentication stays in Paseo and the installed provider CLI.
 
-Automatic approvals is the default permission setting. Neither classifier can
+Automatic approvals is the default permission setting. No classifier can
 select Full access. Codex enforces intent through its sandbox and Auto-review.
 Other providers use their own work mode unless Plan is enabled. Discussion and
 review receive no-edit instructions under automatic approvals. Intent alone

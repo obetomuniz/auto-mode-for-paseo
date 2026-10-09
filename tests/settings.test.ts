@@ -91,6 +91,10 @@ test("provider settings round-trip and never expose the API key", () => {
   const publicSettings = toPublic({ ...defaults, apiKey: "test-key" });
   assert.equal(publicSettings.hasApiKey, true);
   assert.equal("apiKey" in publicSettings, false);
+  const openai = toPublic({ ...defaults, openaiApiKey: "openai-key" });
+  assert.equal(openai.hasOpenaiApiKey, true);
+  assert.equal(openai.hasApiKey, false);
+  assert.ok(!JSON.stringify(openai).includes("openai-key"));
 });
 
 test("saving settings drops unknown keys and preserves the key and model choices across reloads", async (t) => {
@@ -131,7 +135,7 @@ test("legacy settings default to Jev and invalid classifiers stop loading", asyn
 });
 
 test("switching classifiers retains the secret", async (t) => {
-  let current = JSON.stringify({ apiKey: "test-key" });
+  let current = JSON.stringify({ apiKey: "test-key", openaiApiKey: "openai-key" });
   t.mock.method(fs, "readFile", async () => current);
   mockSettingsWrites(t, (text) => { current = text; });
   const loaded = await loadSettings();
@@ -140,6 +144,9 @@ test("switching classifiers retains the secret", async (t) => {
   assert.equal(saved.hasApiKey, true);
   assert.equal("apiKey" in saved, false);
   assert.equal((await loadSettings()).classifier, "laya");
+  const openai = await saveSettings({ ...await loadSettings(), classifier: "openai", apiKey: "", openaiApiKey: "" });
+  assert.equal(openai.hasOpenaiApiKey, true);
+  assert.equal((await loadSettings()).openaiApiKey, "openai-key");
   await saveSettings({ ...await loadSettings(), classifier: "jev", apiKey: "" });
   assert.equal((await loadSettings()).apiKey, "test-key");
 });

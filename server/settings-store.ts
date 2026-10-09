@@ -69,6 +69,7 @@ async function writeSettings(values: ProviderSettings) {
   const next = settingsSchema.parse({
     ...values,
     apiKey: values.apiKey.trim() ? values.apiKey : current.apiKey,
+    openaiApiKey: values.openaiApiKey.trim() ? values.openaiApiKey : current.openaiApiKey,
   });
   await mkdir(join(homedir(), ".paseo"), { recursive: true });
   const temporary = `${SETTINGS_PATH}.${randomUUID()}.tmp`;

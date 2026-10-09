@@ -1,5 +1,6 @@
 import { evaluateRoute, typeSafeKey } from "./jev";
 import { evaluateLayaRoute } from "./laya";
+import { evaluateOpenAiRoute, openAiKey, OPENAI_DEFAULT_MODEL } from "./openai-decisions";
 import {
   pickExecution,
   pickEffort,
@@ -18,7 +19,7 @@ import { depthRank, TASK_DEPTH_LABELS, type TaskDepth } from "../shared/task-dep
 import type { WorkspaceState } from "./workspace-state";
 
 export type AutoRoute = {
-  classifier: "jev" | "laya";
+  classifier: ProviderSettings["classifier"];
   intent: Intent;
   presetId: string;
   provider: string;
@@ -73,6 +74,9 @@ export async function classifyPrompt(prompt: string, context: ContextEntry[], se
   const presets = automatic ? settings.presets : [];
   if (settings.classifier === "laya") {
     return evaluateLayaRoute({ prompt, context, presets, workspace, python: settings.layaPython, cache: settings.layaCache, model: settings.layaModel, device: settings.layaDevice });
+  }
+  if (settings.classifier === "openai") {
+    return evaluateOpenAiRoute({ apiKey: openAiKey(settings), model: settings.openaiModel.trim() || OPENAI_DEFAULT_MODEL, prompt, context, presets, workspace });
   }
   if (settings.classifier !== "jev") throw new Error("Unknown classifier; no provider turn was started.");
   return evaluateRoute({ apiKey: typeSafeKey(settings), model: settings.model.trim() || "jev-latest", prompt, context, presets, workspace });
